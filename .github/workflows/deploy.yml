@@ -1,1 +1,49 @@
 
+name: Deploy Cargo Website to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Validate website
+        run: |
+          test -f index.html
+          test -d css
+          test -d js
+          echo "Website validation successful"
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy website to EC2
+        run: |
+          tar --exclude='.git' -czf cargo-website.tar.gz .
+          scp cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
+
+      - name: Deploy website to Nginx
+        run: |
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+            sudo rm -rf /var/www/html/*
+            sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html
+            sudo chown -R www-data:www-data /var/www/html
+            sudo nginx -t
+            sudo systemctl reload nginx
+            echo "Cargo website deployed successfully"
+          EOF
+```
+
