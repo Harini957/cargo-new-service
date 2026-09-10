@@ -32,9 +32,9 @@ jobs:
 
       - name: Copy website to EC2
         run: |
-          tar --exclude='.git' -czf cargo-website.tar.gz .
-          scp cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
-
+           tar --exclude='.git' -czf /tmp/cargo-website.tar.gz .
+           scp /tmp/cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
+           
       - name: Deploy website to Nginx
         run: |
           ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/* && sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html && sudo chown -R www-data:www-data /var/www/html && sudo nginx -t && sudo systemctl reload nginx && echo 'Cargo website deployed successfully'"       
