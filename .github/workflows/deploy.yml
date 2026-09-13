@@ -1,4 +1,4 @@
-
+```yaml
 name: Deploy Cargo Website to EC2
 
 on:
@@ -51,22 +51,20 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add /tmp/ec2_key
 
-      # 4. Add EC2 host to known hosts
+      # 4. Add EC2 to known hosts
       - name: Add EC2 to known hosts
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           echo "Adding EC2 host..."
 
-          if [ -z "$EC2_HOST" ]; then
-            echo "ERROR: EC2_HOST secret is empty"
-            exit 1
-          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
           echo "EC2 host added successfully"
-
       # 5. Test SSH connection
       - name: Test SSH connection
         env:
@@ -139,3 +137,4 @@ jobs:
           echo "     ↓"
           echo " Live Cargo Website"
           echo "========================================"
+```
