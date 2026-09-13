@@ -10,12 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # 1. Get the source code from GitHub
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # 2. Check that the website files exist
       - name: Validate website
         run: |
           test -f index.html
@@ -23,87 +20,20 @@ jobs:
           test -d js
           echo "Website validation successful"
 
-      # 3. Check that EC2 secrets are available
-      - name: Check EC2 secrets
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          if [ -z "$EC2_HOST" ]; then
-            echo "ERROR: EC2_HOST secret is missing"
-            exit 1
-          fi
-
-          if [ -z "$EC2_USERNAME" ]; then
-            echo "ERROR: EC2_USERNAME secret is missing"
-            exit 1
-          fi
-
-          if [ -z "$EC2_SSH_KEY" ]; then
-            echo "ERROR: EC2_SSH_KEY secret is missing"
-            exit 1
-          fi
-
-          echo "EC2_HOST is available"
-          echo "EC2_USERNAME is available"
-          echo "EC2_SSH_KEY is available"
-
-      # 4. Configure SSH using the EC2 private key
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      # 5. Add EC2 to known hosts
       - name: Add EC2 to known hosts
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 6. Create website archive
-      - name: Create website archive
-        run: |
-          tar --exclude='.git' -czf /tmp/cargo-website.tar.gz .
-
-          echo "Website archive created:"
-          ls -lh /tmp/cargo-website.tar.gz
-
-      # 7. Copy website archive to EC2
       - name: Copy website to EC2
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
-          echo "Copying website archive to EC2..."
+          tar --exclude='.git' -czf cargo-website.tar.gz .
+          scp cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
 
-          scp /tmp/cargo-website.tar.gz \
-            "$EC2_USERNAME@$EC2_HOST:/tmp/"
-
-          echo "Website archive copied successfully"
-
-      # 8. Deploy website into Nginx web directory
       - name: Deploy website to Nginx
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
-          echo "Deploying website to /var/www/html..."
-
-          ssh "$EC2_USERNAME@$EC2_HOST" "
-            sudo rm -rf /var/www/html/*
-            sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html
-            sudo rm -f /tmp/cargo-website.tar.gz
-            sudo systemctl reload nginx
-          "
-
-          echo "Website deployed successfully"
-
-      # 9. Final success message
-      - name: Deployment successful
-        run: |
-          echo "========================================"
-          echo " Cargo website deployment successful!"
-          echo " GitHub -> GitHub Actions -> EC2 -> Nginx"
-          echo "========================================"
+          ssh ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/* && sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html && sudo chown -R www-data:www-data /var/www/html && sudo nginx -t && sudo systemctl reload nginx && echo 'Cargo website deployed successfully'"
