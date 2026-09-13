@@ -20,6 +20,20 @@ jobs:
           test -d js
           echo "Website validation successful"
 
+      - name: Check EC2 secrets
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "ERROR: EC2_HOST secret is missing"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.EC2_USERNAME }}" ]; then
+            echo "ERROR: EC2_USERNAME secret is missing"
+            exit 1
+          fi
+
+          echo "EC2_HOST and EC2_USERNAME are available"
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
@@ -29,10 +43,14 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Copy website to EC2
+      - name: Create website archive
         run: |
           tar --exclude='.git' -czf /tmp/cargo-website.tar.gz .
-          scp /tmp/cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
+
+      - name: Copy website to EC2
+        run: |
+          scp /tmp/cargo-website.tar.gz \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
 
       - name: Deploy website to Nginx
         run: |
