@@ -1,4 +1,4 @@
-```yaml
+
 name: Deploy Cargo Website to EC2
 
 on:
@@ -82,4 +82,4 @@ jobs:
           echo " Cargo website deployment successful!"
           echo " GitHub -> GitHub Actions -> EC2 -> Nginx"
           echo "========================================"
-```
+
