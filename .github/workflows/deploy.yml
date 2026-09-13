@@ -24,11 +24,15 @@ jobs:
           test -d js
           echo "Website validation successful"
 
-      # 3. Setup SSH using EC2 private key
-      - name: Setup SSH
+      # 3. - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Check SSH key
+        run: |
+          echo "Checking loaded SSH keys..."
+          ssh-add -l
 
       # 4. Add EC2 to known hosts
       - name: Add EC2 to known hosts
