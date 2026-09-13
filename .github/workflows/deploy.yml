@@ -19,65 +19,26 @@ jobs:
       # 2. Validate website files
       - name: Validate website
         run: |
-          echo "Checking website files..."
-
           test -f index.html
           test -d css
           test -d js
-
           echo "Website validation successful"
 
-      # 3. Validate and configure SSH private key
+      # 3. Setup SSH using EC2 private key
       - name: Setup SSH
-        env:
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          echo "Checking EC2 SSH key..."
-
-          if [ -z "$EC2_SSH_KEY" ]; then
-            echo "ERROR: EC2_SSH_KEY secret is empty"
-            exit 1
-          fi
-
-          echo "SSH key secret exists"
-
-          printf '%s\n' "$EC2_SSH_KEY" > /tmp/ec2_key
-          chmod 600 /tmp/ec2_key
-
-          ssh-keygen -y -f /tmp/ec2_key > /tmp/ec2_public_key
-
-          echo "SSH private key is valid"
-
-          eval "$(ssh-agent -s)"
-          ssh-add /tmp/ec2_key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       # 4. Add EC2 to known hosts
       - name: Add EC2 to known hosts
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          echo "Adding EC2 host..."
-
           mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
 
-          echo "EC2 host added successfully"
-      # 5. Test SSH connection
-      - name: Test SSH connection
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-        run: |
-          echo "Testing SSH connection to EC2..."
-
-          ssh -o StrictHostKeyChecking=yes \
-              "$EC2_USERNAME@$EC2_HOST" \
-              "echo 'SSH connection successful'"
-
-      # 6. Create website archive
+      # 5. Create website archive
       - name: Create website archive
         run: |
           echo "Creating website archive..."
@@ -89,7 +50,7 @@ jobs:
           echo "Website archive created:"
           ls -lh /tmp/cargo-website.tar.gz
 
-      # 7. Copy website archive to EC2
+      # 6. Copy website to EC2
       - name: Copy website to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -97,13 +58,12 @@ jobs:
         run: |
           echo "Copying website archive to EC2..."
 
-          scp -o StrictHostKeyChecking=yes \
-              /tmp/cargo-website.tar.gz \
+          scp /tmp/cargo-website.tar.gz \
               "$EC2_USERNAME@$EC2_HOST:/tmp/cargo-website.tar.gz"
 
           echo "Website archive copied successfully"
 
-      # 8. Deploy website to Nginx
+      # 7. Deploy website to Nginx
       - name: Deploy website to Nginx
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -111,29 +71,22 @@ jobs:
         run: |
           echo "Deploying website to Nginx..."
 
-          ssh -o StrictHostKeyChecking=yes \
-              "$EC2_USERNAME@$EC2_HOST" \
-              "sudo rm -rf /var/www/html/* && \
-               sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html && \
-               sudo rm -f /tmp/cargo-website.tar.gz && \
-               sudo chown -R www-data:www-data /var/www/html && \
-               sudo chmod -R 755 /var/www/html && \
-               sudo systemctl reload nginx"
+          ssh "$EC2_USERNAME@$EC2_HOST" "
+            sudo rm -rf /var/www/html/*
+            sudo tar -xzf /tmp/cargo-website.tar.gz -C /var/www/html
+            sudo rm -f /tmp/cargo-website.tar.gz
+            sudo chown -R www-data:www-data /var/www/html
+            sudo chmod -R 755 /var/www/html
+            sudo systemctl reload nginx
+          "
 
           echo "Website deployed successfully"
 
-      # 9. Final success message
+      # 8. Final success message
       - name: Deployment successful
         run: |
           echo "========================================"
           echo " Cargo website deployment successful!"
-          echo " GitHub"
-          echo "     ↓"
-          echo " GitHub Actions"
-          echo "     ↓"
-          echo " AWS EC2 Ubuntu"
-          echo "     ↓"
-          echo " Nginx"
-          echo "     ↓"
-          echo " Live Cargo Website"
+          echo " GitHub -> GitHub Actions -> EC2 -> Nginx"
           echo "========================================"
+
