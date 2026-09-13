@@ -28,6 +28,10 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+ 
+              - name: Check loaded SSH key
+        run: |
+          ssh-add -l
 
       - name: Check SSH key
         run: |
