@@ -31,8 +31,8 @@ jobs:
 
       - name: Copy website to EC2
         run: |
-          tar --exclude='.git' -czf cargo-website.tar.gz .
-          scp cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
+          tar --exclude='.git' -czf /tmp/cargo-website.tar.gz .
+          scp /tmp/cargo-website.tar.gz ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/tmp/
 
       - name: Deploy website to Nginx
         run: |
